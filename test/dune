@@ -1,2 +1,3 @@
 (test
- (name customchess))
+ (name chess_test)
+ (libraries customchess))
