@@ -71,20 +71,4 @@ let ok_or_raise result =
   | Ok r -> r
   | Error exn -> raise exn
 
-let assert_true ~(expected : 'a) ~(actual : 'a) ~show =
-  if expected <> actual then
-    Printf.printf
-      "Assert_true failed: expected: %s actual %s\n\n"
-      (show expected)
-      (show actual)
-  else
-    Printf.printf "Assert_true passed %s\n\n" (show actual)
-
-let assert_ok ~(expected : 'a) ~(actual : ('a, exn) result) ~show =
-  let ok = ok_or_raise actual in
-  assert_true ~expected ~actual:ok ~show
-
-let show_list show list =
-  List.fold_left (fun acc x -> acc ^ show x ^ "; ") "[ " list ^ "]"
-
-let show_str_list list = show_list (fun x -> Printf.sprintf "\"%s\"" x) list
+type string_list = string list [@@deriving show]

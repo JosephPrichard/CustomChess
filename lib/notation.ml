@@ -93,10 +93,10 @@ let fen_of_board board smap =
             (fen, 0)
           else
             (fen, empty_count + 1)
-        else (* A number representing the number of empty piece *)
+        else (* A number count of empty pieces *)
           let empty_str = if empty_count > 0 then string_of_int empty_count else "" in
           (* Piece represented by a character *)
-          let piece_str = String.make 0 (char_of_piece piece smap) in
+          let piece_str = String.make 1 (char_of_piece piece smap) in
           (* Slash at the end of a row *)
           let term_str = if is_end_of_row board pos then "/" else "" in
           let fen = fen ^ empty_str ^ piece_str ^ term_str in
@@ -108,6 +108,8 @@ let fen_of_board board smap =
   Printf.sprintf "%s %c" pieces_fen color_fen
 
 type move = piece * position [@@deriving show]
+
+type move_list = move list [@@deriving show]
 
 let move_of_notation mn iswhite dmap : (move, exn) result =
   if String.length mn = 3 then
