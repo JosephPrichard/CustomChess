@@ -11,14 +11,39 @@ let turn_of_string s =
   | "w" -> Ok false
   | _ -> Error (Parse_error (Printf.sprintf "Unknown color %s" s))
 
-let char_of_piece piece (smap : char CharMap.t) =
+let vpiece_of_char c dmap =
+  if c = 'K' then
+    Ok King
+  else
+    let* vpiece =
+      option_to_result
+        (CharMap.find_opt c dmap)
+        (Parse_error "Unable to parse character into a piece")
+    in
+    Ok vpiece
+
+let piece_of_char c dmap =
+  if c = 'K' then
+    Ok (White King)
+  else if c = 'k' then
+    Ok (Black King)
+  else
+    let* piece =
+      option_to_result
+        (CharMap.find_opt c dmap)
+        (Parse_error "Unable to parse character into a piece")
+    in
+    Ok piece
+
+let char_of_piece piece smap =
   match piece with
   | White (Piece code) | Black (Piece code) ->
-    Option.value (CharMap.find_opt code smap) ~default:'?'
+    let c = CharMap.find_opt code smap in
+    Option.value c ~default:'?'
   | White King | Black King -> 'K'
-  | Empty -> ' '
+  | Empty -> '_'
 
-let pieces_of_fen pieces_fen (dmap : piece CharMap.t) =
+let pieces_of_fen pieces_fen dmap =
   (* Produces a list of pieces and the dimension of said pieces *)
   let* pieces_list =
     fold_str_result
@@ -26,15 +51,14 @@ let pieces_of_fen pieces_fen (dmap : piece CharMap.t) =
         let pieces = acc in
         if c = '/' then (* A row seperator means the dimension is reset back to 0*)
           Ok pieces
-        else if is_numeric c then (
+        else if is_numeric c then
           (* A number indicates there is that number of empty pieces*)
           let count = int_of_char c in
           let pieces = mcons Empty count pieces in
-          Ok pieces)
-        else (
-          match CharMap.find_opt c dmap with
-          | Some piece -> Ok (piece :: pieces)
-          | None -> Error (Parse_error "Fen pieces must be alphabetical characters")))
+          Ok pieces
+        else
+          let* piece = piece_of_char c dmap in
+          Ok (piece :: pieces))
       []
       pieces_fen
   in
@@ -57,70 +81,69 @@ let board_of_fen fen dmap =
 let is_end_of_row board ((row, col) : position) =
   row != board.dim - 1 && col = board.dim - 1
 
-let fen_of_board board (smap : char CharMap.t) =
+let fen_of_board board smap =
   let pieces_fen, _ =
     fold_board
       (fun acc pos piece ->
         let fen, empty_count = acc in
         if piece = Empty then
-          if is_end_of_row board pos then (
+          if is_end_of_row board pos then
             (* An empty piece at the end of the row means the empty count is added to the fen*)
             let fen = fen ^ string_of_int (empty_count + 1) ^ "/" in
-            (fen, 0))
-          else (* An empty piece must be added to the empty count *)
+            (fen, 0)
+          else
             (fen, empty_count + 1)
-        else (
-          (* Empty pieces must be added before the non empty piece *)
+        else (* A number representing the number of empty piece *)
           let empty_str = if empty_count > 0 then string_of_int empty_count else "" in
-          (* Then the piece itself must be added *)
+          (* Piece represented by a character *)
           let piece_str = String.make 0 (char_of_piece piece smap) in
-          (*The row ender is only added at the end of a row *)
+          (* Slash at the end of a row *)
           let term_str = if is_end_of_row board pos then "/" else "" in
           let fen = fen ^ empty_str ^ piece_str ^ term_str in
-          (fen, 0)))
+          (fen, 0))
       ("", 0)
       board
   in
   let color_fen = char_of_turn board.iswhite in
   Printf.sprintf "%s %c" pieces_fen color_fen
 
-type move = char * position
+type move = piece * position [@@deriving show]
 
-let move_of_notation mn : (move, exn) result =
-  if String.length mn = 2 then (
-    (* No symbol is always considered a pawn *)
-    let pos = pos_of_string mn in
-    Ok ('p', pos))
-  else if String.length mn = 3 then (
-    let piece = String.get mn 0 in
+let move_of_notation mn iswhite dmap : (move, exn) result =
+  if String.length mn = 3 then
+    let c = String.get mn 0 in
+    let* vpiece = vpiece_of_char c dmap in
+    let piece = if iswhite then White vpiece else Black vpiece in
     let pos = pos_of_string (String.sub mn 1 2) in
-    Ok (piece, pos))
+    Ok (piece, pos)
   else
-    Error (Parse_error "A move must be 2 or 3 characters")
+    Error (Parse_error "A move must be 3 characters")
 
-type ply = move * move option
+type ply = move * move option [@@deriving show]
 
 let filter_emptystr = List.filter (( <> ) "")
 
-let ply_of_notation pln : (ply, exn) result =
+let ply_of_notation pln dmap : (ply, exn) result =
   (* Split by space into tokens then strip out empty tokens *)
   let tokens = filter_emptystr (String.split_on_char ' ' pln) in
   match tokens with
   | [ wm; bm ] ->
-    let* wm = move_of_notation wm in
-    let* bm = move_of_notation bm in
+    let* wm = move_of_notation wm true dmap in
+    let* bm = move_of_notation bm false dmap in
     Ok (wm, Some bm)
   | [ wm ] ->
-    let* m = move_of_notation wm in
+    let* m = move_of_notation wm true dmap in
     Ok (m, None)
   | _ -> Error (Parse_error "A ply pgn must have 1 or 2 tokens")
 
-let moves_of_notation pgn : (move list, exn) result =
-  let tokens = filter_emptystr (Str.split (Str.regexp "\\d+\\.") pgn) in
+let split_on_number s = filter_emptystr (Str.split (Str.regexp "[0-9]+\\.") s)
+
+let moves_of_notation pgn dmap : (move list, exn) result =
+  let tokens = split_on_number pgn in
   let* acc =
     fold_result
       (fun acc pgn ->
-        let* ply = ply_of_notation pgn in
+        let* ply = ply_of_notation pgn dmap in
         match ply with
         | wm, Some bm -> Ok (wm :: bm :: acc)
         | wm, None -> Ok (wm :: acc))

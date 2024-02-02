@@ -1,34 +1,35 @@
 open Lib
 
-type position = int * int
+type position = int * int [@@deriving show]
 
 type vpiece =
   | Piece of char
   | King
+[@@deriving show]
 
 type piece =
   | White of vpiece
   | Black of vpiece
   | Empty
+[@@deriving show]
 
 type direction =
   | Single of position
   | Vector of position
   | Multiple of direction list
 
-type rule = {
-  allowed_pos : position list;
-  direction : direction;
-  hoppable : bool;
-}
+type rule =
+  { allowed_pos : position list
+  ; direction : direction
+  ; hoppable : bool
+  }
 
-type board = {
-  iswhite : bool;
-  pieces : piece array;
-  dim : int;
-}
-
-module CharMap = Map.Make (Char)
+type board =
+  { iswhite : bool
+  ; pieces : piece array
+  ; dim : int
+  }
+[@@deriving show]
 
 let add_pos (pos1 : position) (pos2 : position) : position =
   let row1, col1 = pos1 in
@@ -38,11 +39,11 @@ let add_pos (pos1 : position) (pos2 : position) : position =
 let pos_of_index index dim : position = (index / dim, index mod dim)
 let index_of_pos ((row, col) : position) dim = (row * dim) + col
 
-let pos_of_string str =
+let pos_of_string str : position =
   let rowc = String.get str 0 in
   let colc = String.get str 1 in
   let row = int_of_char rowc - int_of_char 'a' in
-  let col = int_of_char colc - int_of_char '0' in
+  let col = int_of_char colc - int_of_char '1' in
   (row, col)
 
 let ( .%() ) board pos = board.pieces.(index_of_pos pos board.dim)
@@ -73,11 +74,11 @@ let map_board f board =
 let fold_board f acc board =
   let len = Array.length board.pieces in
   let rec loop acc i =
-    if i < len then (
+    if i < len then
       let pos = pos_of_index i board.dim in
       let piece = board.pieces.(i) in
       let acc = f acc pos piece in
-      loop acc (i + 1))
+      loop acc (i + 1)
     else
       acc
   in
@@ -104,12 +105,12 @@ let in_bounds pos board =
 
 (* Checks if the piece can move to the position on the board *)
 let can_move_to piece pos board =
-  if in_bounds pos board then (
+  if in_bounds pos board then
     match (piece, board.%(pos)) with
     | _, Empty (* Any piece can move to an empty piece *)
     | White _, Black _ (* Pieces can take an opposite color *)
     | Black _, White _ -> true
-    | _ -> false)
+    | _ -> false
   else
     false
 
@@ -183,10 +184,10 @@ let find_moves base_pos board ruleset =
 let find_all_moves board game_rules =
   fold_board
     (fun acc pos piece ->
-      if is_piece_turn piece board then (
+      if is_piece_turn piece board then
         (* A piece that matches the current color is allowed to move *)
         let moves = find_moves pos board game_rules in
-        moves :: acc)
+        moves :: acc
       else
         acc)
     []

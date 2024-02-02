@@ -12,4 +12,4 @@
 (package
  (name customchess)
  (synopsis "Play Chess with custom pieces, rules, and variation")
- (depends ocaml dune core))
+ (depends ocaml dune ppx_deriving))

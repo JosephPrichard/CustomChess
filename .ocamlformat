@@ -1,10 +1,7 @@
 profile = janestreet
 version = 0.25.1
 cases-exp-indent = 2
-type-decl = sparse
-break-separators = after
 let-binding-spacing = compact
 if-then-else = fit-or-vertical
-dock-collection-brackets
 parens-tuple = always
-let-and = sparse
+parens-ite = false

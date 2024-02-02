@@ -7,7 +7,7 @@ bug-reports: "https://github.com/JosephPrichard/CustomChess/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.8"}
-  "core"
+  "ppx_deriving"
   "odoc" {with-doc}
 ]
 build: [

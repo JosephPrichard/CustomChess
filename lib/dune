@@ -1,3 +1,6 @@
 (library
  (name customchess)
- (modules chess serialize lib))
+ (modules chess notation lib)
+ (preprocess
+  (pps ppx_deriving.show))
+ (libraries str))
